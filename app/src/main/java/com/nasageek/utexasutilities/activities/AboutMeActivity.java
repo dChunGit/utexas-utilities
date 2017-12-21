@@ -30,9 +30,9 @@ public class AboutMeActivity extends BaseActivity {
         underlinedLicenseLink.setSpan(new UnderlineSpan(), 0, underlinedLicenseLink.length(), 0);
         licenseView.setText(underlinedLicenseLink);
         licenseView.setOnClickListener(v -> {
-            FragmentManager fm = getSupportFragmentManager();
+            /*FragmentManager fm = getSupportFragmentManager();
             LibraryLicenseDialog libraryLicenseDlg = new LibraryLicenseDialog();
-            libraryLicenseDlg.show(fm, "fragment_license");
+            libraryLicenseDlg.show(fm, "fragment_license");*/
         });
         // do the same thing with the Privacy Policy link
         TextView policyView = (TextView) findViewById(R.id.privacy_policy_link);
@@ -70,7 +70,7 @@ public class AboutMeActivity extends BaseActivity {
         }
     }
 
-    public static class LibraryLicenseDialog extends DialogFragment {
+    /*public static class LibraryLicenseDialog extends DialogFragment {
 
         @NonNull
         @Override
@@ -82,5 +82,5 @@ public class AboutMeActivity extends BaseActivity {
                     .setNeutralButton("Okay", null)
                     .create();
         }
-    }
+    }*/
 }

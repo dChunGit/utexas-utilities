@@ -1,9 +1,20 @@
-
 package com.nasageek.utexasutilities.fragments;
 
+import android.Manifest;
+import android.content.ContentResolver;
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.database.Cursor;
+import android.graphics.Color;
+import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
+import android.provider.CalendarContract;
+import android.support.annotation.NonNull;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.app.FragmentManager;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.view.ActionMode;
 import android.text.Html;
@@ -21,6 +32,7 @@ import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.commonsware.cwac.security.RuntimePermissionUtils;
 import com.nasageek.utexasutilities.AuthCookie;
 import com.nasageek.utexasutilities.MyBus;
 import com.nasageek.utexasutilities.NotAuthenticatedException;
@@ -33,15 +45,25 @@ import com.squareup.okhttp.Request;
 import com.squareup.otto.Subscribe;
 
 import java.io.IOException;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
+import java.util.TimeZone;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static com.nasageek.utexasutilities.UTilitiesApplication.UTD_AUTH_COOKIE_KEY;
+import static com.nasageek.utexasutilities.fragments.DoubleDatePickerDialogFragment.EVENT_PROJECTION;
 
 public class ExamScheduleFragment extends ScheduleFragment implements ActionModeFragment,
         ActionMode.Callback, AdapterView.OnItemClickListener {
+
+    private static final int REQUEST_CALENDAR_PERMISSION = 1;
 
     private ArrayList<String> exams = new ArrayList<>();
     private ListView examListview;
@@ -53,6 +75,22 @@ public class ExamScheduleFragment extends ScheduleFragment implements ActionMode
     private String TASK_TAG;
     private String selectedExam;
     private UTilitiesApplication mApp = UTilitiesApplication.getInstance();
+    private Menu mMenu;
+    private RuntimePermissionUtils runtimePermissions;
+
+    public static final String[] EVENT_PROJECTION = new String[]{
+            CalendarContract.Calendars._ID, // 0
+            CalendarContract.Calendars.ACCOUNT_NAME, // 1
+            CalendarContract.Calendars.CALENDAR_DISPLAY_NAME, // 2
+            CalendarContract.Calendars.OWNER_ACCOUNT, // 3
+            CalendarContract.Calendars.VISIBLE, // 4
+            CalendarContract.Calendars.CALENDAR_ACCESS_LEVEL // 5
+    };
+
+    // The indices for the projection array above.
+    private static final int PROJECTION_ID_INDEX = 0;
+    private static final int PROJECTION_ACCOUNT_NAME_INDEX = 1;
+    private static final int PROJECTION_DISPLAY_NAME_INDEX = 2;
 
     public static ExamScheduleFragment newInstance() {
         return new ExamScheduleFragment();
@@ -94,7 +132,7 @@ public class ExamScheduleFragment extends ScheduleFragment implements ActionMode
             progressLayout.setVisibility(View.GONE);
             errorTextView.setText(getString(R.string.login_first));
             errorTextView.setVisibility(View.VISIBLE);
-        } else if (loadStatus == LoadStatus.NOT_STARTED && mApp.getCachedTask(TASK_TAG) == null){
+        } else if (loadStatus == LoadStatus.NOT_STARTED && mApp.getCachedTask(TASK_TAG) == null) {
             loadStatus = LoadStatus.LOADING;
             prepareToLoad();
             FetchExamDataTask task = new FetchExamDataTask(TASK_TAG);
@@ -111,6 +149,8 @@ public class ExamScheduleFragment extends ScheduleFragment implements ActionMode
         if (savedInstanceState != null) {
             exams = savedInstanceState.getStringArrayList("exams");
         }
+        setHasOptionsMenu(true);
+        runtimePermissions = new RuntimePermissionUtils(getActivity());
         utdAuthCookie = mApp.getAuthCookie(UTD_AUTH_COOKIE_KEY);
         TASK_TAG = getClass().getSimpleName();
     }
@@ -136,6 +176,177 @@ public class ExamScheduleFragment extends ScheduleFragment implements ActionMode
     private void setupAdapter() {
         ExamAdapter adapter = new ExamAdapter(getActivity(), exams);
         examListview.setAdapter(adapter);
+    }
+
+    private void exportExams() {
+        if (exams != null) {
+            System.out.println("Printing Export Exams");
+            ArrayList<ContentValues> examList = new ArrayList<>();
+
+            for (String exam : exams) {
+                String[] splitExam = exam.replace(",", "").split("\\^");
+                String title = splitExam[1] + " " + splitExam[2] + " FINAL EXAM";
+
+                if (splitExam.length > 3) {
+                    try {
+                        //check to see if there is a makeup exam
+                        if (splitExam[3].contains("\n")) {
+                                ArrayList<Date> parsedDates = parseDates(splitExam[3]);
+
+                                String building1 = splitExam[4].split("\n")[0].substring(2);
+                                String building2 = splitExam[4].split("\n")[1].substring(2);
+
+                                ContentValues contentValues1 = new ContentValues();
+                                ContentValues contentValues2 = new ContentValues();
+                                contentValues1.put(CalendarContract.Events.TITLE, title + " " + splitExam[4].split("\n")[0].substring(0, 2));
+                                contentValues2.put(CalendarContract.Events.TITLE, title + " " + splitExam[4].split("\n")[1].substring(0, 2));
+                                contentValues1.put(CalendarContract.Events.EVENT_LOCATION, building1);
+                                contentValues2.put(CalendarContract.Events.EVENT_LOCATION, building2);
+                                contentValues1.put(CalendarContract.Events.EVENT_COLOR, Color.RED);
+                                contentValues2.put(CalendarContract.Events.EVENT_COLOR, Color.MAGENTA);
+                                contentValues1.put(CalendarContract.Events.DTSTART, parsedDates.get(0).getTime());
+                                contentValues2.put(CalendarContract.Events.DTSTART, parsedDates.get(2).getTime());
+                                contentValues1.put(CalendarContract.Events.DURATION, startEndToDuration(parsedDates.get(0), parsedDates.get(1)));
+                                contentValues2.put(CalendarContract.Events.DURATION, startEndToDuration(parsedDates.get(2), parsedDates.get(3)));
+                                contentValues1.put(CalendarContract.Events.EVENT_TIMEZONE, TimeZone
+                                        .getTimeZone("US/Central").getID());
+                                contentValues2.put(CalendarContract.Events.EVENT_TIMEZONE, TimeZone
+                                        .getTimeZone("US/Central").getID());
+
+                                examList.add(contentValues1);
+                                examList.add(contentValues2);
+
+                        } else {
+                                ArrayList<Date> parsedDates = parseDates(splitExam[3]);
+
+                                String building1 = splitExam[4].split("\n")[0];
+
+                                ContentValues contentValues1 = new ContentValues();
+                                contentValues1.put(CalendarContract.Events.TITLE, title);
+                                contentValues1.put(CalendarContract.Events.EVENT_LOCATION, building1);
+                                contentValues1.put(CalendarContract.Events.EVENT_COLOR, Color.RED);
+                                contentValues1.put(CalendarContract.Events.DTSTART, parsedDates.get(0).getTime());
+                                contentValues1.put(CalendarContract.Events.DURATION, startEndToDuration(parsedDates.get(0), parsedDates.get(1)));
+                                contentValues1.put(CalendarContract.Events.EVENT_TIMEZONE, TimeZone
+                                        .getTimeZone("US/Central").getID());
+
+                                examList.add(contentValues1);
+
+                        }
+
+                    } catch (ParseException e) {
+                        Toast.makeText(getActivity(),
+                                "Error parsing " + title
+                                        + " time. Export canceled.",
+                                Toast.LENGTH_LONG).show();
+                        e.printStackTrace();
+                    }
+                }
+            }
+
+            if (examList.size() == 0) {
+                Toast.makeText(getActivity(),
+                        "You have no exams this semester!", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            ContentResolver cr = getActivity().getContentResolver();
+            Uri uri = CalendarContract.Calendars.CONTENT_URI;
+
+            if (ActivityCompat.checkSelfPermission(getActivity(), Manifest.permission.READ_CALENDAR) != PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(new String[]{Manifest.permission.READ_CALENDAR},
+                        REQUEST_CALENDAR_PERMISSION);
+            }
+
+            // show them Google Calendars where they are either:
+            // owner, editor, contributor, or domain admin (700, 600, 500, 800 respectively)
+            Cursor cur = cr.query(uri, EVENT_PROJECTION, "((" + CalendarContract.Calendars.ACCOUNT_TYPE
+                            + " = ?) AND ((" + CalendarContract.Calendars.CALENDAR_ACCESS_LEVEL + " = ?) OR "
+                            + "(" + CalendarContract.Calendars.CALENDAR_ACCESS_LEVEL + " = ?) OR " + "("
+                            + CalendarContract.Calendars.CALENDAR_ACCESS_LEVEL + " = ?) OR " + "("
+                            + CalendarContract.Calendars.CALENDAR_ACCESS_LEVEL + " = ?)))",
+                    new String[]{"com.google", "800", "700", "600", "500"},
+                    null);
+            ArrayList<String> calendars = new ArrayList<>();
+            ArrayList<Integer> indices = new ArrayList<>();
+
+            // If no calendars are available, let them know
+            if (cur == null || cur.getCount() == 0) {
+                Toast.makeText(getActivity(),
+                        "There are no available calendars to export to.", Toast.LENGTH_LONG).show();
+                return;
+            }
+            while (cur.moveToNext()) {
+                long calID = cur.getLong(PROJECTION_ID_INDEX);
+                String displayName = cur.getString(PROJECTION_DISPLAY_NAME_INDEX);
+                String accountName = cur.getString(PROJECTION_ACCOUNT_NAME_INDEX);
+                calendars.add(displayName + " ^^ " + accountName);
+
+                // going to hope that they don't have so many calendars that I actually need a long
+                indices.add((int) calID);
+            }
+            cur.close();
+
+            FragmentManager fm = getActivity().getSupportFragmentManager();
+            PickCalendarDialogFragment pcdf = PickCalendarDialogFragment.newInstance(
+                    indices, calendars, examList);
+            pcdf.show(fm, "fragment_pick_calendar");
+        }
+    }
+
+    /*
+     * Converts a start and end time to a duration in the RFC2445 format
+     */
+    private String startEndToDuration(Date startTime, Date endTime) {
+        int minutesDur = (int) ((endTime.getTime() - startTime.getTime()) / (1000 * 60));
+        return "P" + minutesDur + "M";
+    }
+
+    /**
+     * This method generates date objects from exam strings
+     * @param exam contains one exam's parameters
+     * @return arraylist of dates in pairs of 2
+     * @throws ParseException if date format is not parseable
+     */
+    private ArrayList<Date> parseDates(String exam) throws ParseException {
+        ArrayList<Date> dates = new ArrayList<>();
+        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy EEE MMM dd hh aa", Locale.US);
+        String[] diffs = exam.split("\n");
+        int year = Calendar.getInstance().get(Calendar.YEAR);
+
+        if(diffs.length > 1) {
+            for(String splitExam : diffs) {
+                String[] time = splitExam.split(" ");
+                String[] hours = time[4].split("-");
+                String base = year + " " +time[1].substring(0, 3) + " " + time[2].substring(0, 3) + " " + time[3];
+                String type = time[5], type1 = time[5];
+                if(!type.equalsIgnoreCase("am") && !type.equalsIgnoreCase("pm")) {
+                    if(type.equalsIgnoreCase("n")) {
+                        type = "AM";
+                        type1 = "PM";
+                    }
+                }
+
+                dates.add(simpleDateFormat.parse(base + " " + hours[0] + " " + type));
+                dates.add(simpleDateFormat.parse(base + " " + hours[1] + " " + type1));
+            }
+        } else {
+            String[] time = diffs[0].split(" ");
+            String[] hours = time[3].split("-");
+            String base = year + " " +time[0].substring(0, 3) + " " + time[1].substring(0, 3) + " " + time[2];
+            String type = time[4], type1 = time[4];
+            if(!type.equalsIgnoreCase("am") && !type.equalsIgnoreCase("pm")) {
+                if(type.equalsIgnoreCase("n")) {
+                    type = "AM";
+                    type1 = "PM";
+                }
+            }
+            dates.add(simpleDateFormat.parse(base + " " + hours[0] + " " + type));
+            dates.add(simpleDateFormat.parse(base + " " + hours[1] + " " + type1));
+        }
+        System.out.println("Dates");
+        System.out.println(dates);
+        return dates;
     }
 
     @Override
@@ -171,6 +382,59 @@ public class ExamScheduleFragment extends ScheduleFragment implements ActionMode
     @Override
     public boolean onPrepareActionMode(ActionMode mode, Menu menu) {
         return false;
+    }
+
+    @Override
+    public void onPrepareOptionsMenu(Menu menu) {
+        boolean examsScheduled = (exams != null && exams.size() > 0);
+        System.out.println(examsScheduled);
+        menu.findItem(R.id.export_exams).setEnabled(examsScheduled);
+    }
+
+    @Override
+    public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
+        this.mMenu = menu;
+        System.out.println("Inflating menu");
+        inflater.inflate(R.menu.exam_schedule_menu, menu);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        int id = item.getItemId();
+        switch (id) {
+            case R.id.export_exams: {
+                if (runtimePermissions.hasPermission(Manifest.permission.READ_CALENDAR)) {
+                    /*DoubleDatePickerDialogFragment.newInstance(classList)
+                            .show(getActivity().getSupportFragmentManager(), "double_date_picker");*/
+                    exportExams();
+
+                    //System.out.println(exams);
+                } else {
+                    requestPermissions(new String[]{Manifest.permission.READ_CALENDAR},
+                            REQUEST_CALENDAR_PERMISSION);
+                }
+            } break;
+            default:
+                return super.onOptionsItemSelected(item);
+        }
+        return true;
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
+                                           @NonNull int[] grantResults) {
+        switch (requestCode) {
+            case REQUEST_CALENDAR_PERMISSION: {
+                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    // work around crash when showing fragment in onRequestPermissionsResult
+                    // https://code.google.com/p/android/issues/detail?id=190966
+                    /*new Handler().postDelayed(() -> DoubleDatePickerDialogFragment.newInstance(classList)
+                            .show(getActivity().getSupportFragmentManager(), "double_date_picker"), 200);*/
+                    exportExams();
+                    System.out.println(exams);
+                }
+            } break;
+        }
     }
 
     @Override
@@ -306,6 +570,7 @@ public class ExamScheduleFragment extends ScheduleFragment implements ActionMode
 
         public ExamAdapter(Context c, ArrayList<String> objects) {
             super(c, 0, objects);
+            System.out.println(objects);
         }
 
         @Override
