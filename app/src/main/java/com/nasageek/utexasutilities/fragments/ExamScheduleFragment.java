@@ -75,7 +75,6 @@ public class ExamScheduleFragment extends ScheduleFragment implements ActionMode
     private String TASK_TAG;
     private String selectedExam;
     private UTilitiesApplication mApp = UTilitiesApplication.getInstance();
-    private Menu mMenu;
     private RuntimePermissionUtils runtimePermissions;
 
     public static final String[] EVENT_PROJECTION = new String[]{
@@ -178,9 +177,12 @@ public class ExamScheduleFragment extends ScheduleFragment implements ActionMode
         examListview.setAdapter(adapter);
     }
 
+    /**
+     * Prepares and exports exam schedule to google calendar using the
+     * PickCalendarDialogFragment
+     */
     private void exportExams() {
         if (exams != null) {
-            System.out.println("Printing Export Exams");
             ArrayList<ContentValues> examList = new ArrayList<>();
 
             for (String exam : exams) {
@@ -202,6 +204,7 @@ public class ExamScheduleFragment extends ScheduleFragment implements ActionMode
                                 contentValues2.put(CalendarContract.Events.TITLE, title + " " + splitExam[4].split("\n")[1].substring(0, 2));
                                 contentValues1.put(CalendarContract.Events.EVENT_LOCATION, building1);
                                 contentValues2.put(CalendarContract.Events.EVENT_LOCATION, building2);
+                                //Colors don't actually change for some reason, maybe change to new calendar instance?
                                 contentValues1.put(CalendarContract.Events.EVENT_COLOR, Color.RED);
                                 contentValues2.put(CalendarContract.Events.EVENT_COLOR, Color.MAGENTA);
                                 contentValues1.put(CalendarContract.Events.DTSTART, parsedDates.get(0).getTime());
@@ -219,11 +222,11 @@ public class ExamScheduleFragment extends ScheduleFragment implements ActionMode
                         } else {
                                 ArrayList<Date> parsedDates = parseDates(splitExam[3]);
 
-                                String building1 = splitExam[4].split("\n")[0];
+                                String building = splitExam[4].split("\n")[0];
 
                                 ContentValues contentValues1 = new ContentValues();
                                 contentValues1.put(CalendarContract.Events.TITLE, title);
-                                contentValues1.put(CalendarContract.Events.EVENT_LOCATION, building1);
+                                contentValues1.put(CalendarContract.Events.EVENT_LOCATION, building);
                                 contentValues1.put(CalendarContract.Events.EVENT_COLOR, Color.RED);
                                 contentValues1.put(CalendarContract.Events.DTSTART, parsedDates.get(0).getTime());
                                 contentValues1.put(CalendarContract.Events.DURATION, startEndToDuration(parsedDates.get(0), parsedDates.get(1)));
@@ -253,6 +256,7 @@ public class ExamScheduleFragment extends ScheduleFragment implements ActionMode
             ContentResolver cr = getActivity().getContentResolver();
             Uri uri = CalendarContract.Calendars.CONTENT_URI;
 
+            //Check to make sure we have calendar permission before trying to access it
             if (ActivityCompat.checkSelfPermission(getActivity(), Manifest.permission.READ_CALENDAR) != PackageManager.PERMISSION_GRANTED) {
                 requestPermissions(new String[]{Manifest.permission.READ_CALENDAR},
                         REQUEST_CALENDAR_PERMISSION);
@@ -344,8 +348,6 @@ public class ExamScheduleFragment extends ScheduleFragment implements ActionMode
             dates.add(simpleDateFormat.parse(base + " " + hours[0] + " " + type));
             dates.add(simpleDateFormat.parse(base + " " + hours[1] + " " + type1));
         }
-        System.out.println("Dates");
-        System.out.println(dates);
         return dates;
     }
 
@@ -387,14 +389,11 @@ public class ExamScheduleFragment extends ScheduleFragment implements ActionMode
     @Override
     public void onPrepareOptionsMenu(Menu menu) {
         boolean examsScheduled = (exams != null && exams.size() > 0);
-        System.out.println(examsScheduled);
         menu.findItem(R.id.export_exams).setEnabled(examsScheduled);
     }
 
     @Override
     public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
-        this.mMenu = menu;
-        System.out.println("Inflating menu");
         inflater.inflate(R.menu.exam_schedule_menu, menu);
     }
 
@@ -404,11 +403,7 @@ public class ExamScheduleFragment extends ScheduleFragment implements ActionMode
         switch (id) {
             case R.id.export_exams: {
                 if (runtimePermissions.hasPermission(Manifest.permission.READ_CALENDAR)) {
-                    /*DoubleDatePickerDialogFragment.newInstance(classList)
-                            .show(getActivity().getSupportFragmentManager(), "double_date_picker");*/
                     exportExams();
-
-                    //System.out.println(exams);
                 } else {
                     requestPermissions(new String[]{Manifest.permission.READ_CALENDAR},
                             REQUEST_CALENDAR_PERMISSION);
@@ -426,12 +421,7 @@ public class ExamScheduleFragment extends ScheduleFragment implements ActionMode
         switch (requestCode) {
             case REQUEST_CALENDAR_PERMISSION: {
                 if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    // work around crash when showing fragment in onRequestPermissionsResult
-                    // https://code.google.com/p/android/issues/detail?id=190966
-                    /*new Handler().postDelayed(() -> DoubleDatePickerDialogFragment.newInstance(classList)
-                            .show(getActivity().getSupportFragmentManager(), "double_date_picker"), 200);*/
                     exportExams();
-                    System.out.println(exams);
                 }
             } break;
         }
@@ -570,7 +560,6 @@ public class ExamScheduleFragment extends ScheduleFragment implements ActionMode
 
         public ExamAdapter(Context c, ArrayList<String> objects) {
             super(c, 0, objects);
-            System.out.println(objects);
         }
 
         @Override

@@ -1,14 +1,17 @@
 
 package com.nasageek.utexasutilities.fragments;
 
+import android.Manifest;
 import android.content.ContentResolver;
 import android.content.ContentValues;
+import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.CalendarContract;
 import android.provider.CalendarContract.Calendars;
 import android.support.design.widget.TabLayout;
+import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.DialogFragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.view.ViewPager;
@@ -35,6 +38,7 @@ import java.util.TimeZone;
 public class DoubleDatePickerDialogFragment extends ExportScheduleDialogFragment {
 
     private DatePicker startDatePicker, endDatePicker;
+    private static final int REQUEST_CALENDAR_PERMISSION = 1;
 
     public static final String[] EVENT_PROJECTION = new String[] {
             Calendars._ID, // 0
@@ -163,6 +167,11 @@ public class DoubleDatePickerDialogFragment extends ExportScheduleDialogFragment
 
         Uri uri = Calendars.CONTENT_URI;
 
+        //Check to make sure we have calendar permission before trying to access it
+        if (ActivityCompat.checkSelfPermission(getActivity(), Manifest.permission.READ_CALENDAR) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{Manifest.permission.READ_CALENDAR},
+                    REQUEST_CALENDAR_PERMISSION);
+        }
         // show them Google Calendars where they are either:
         // owner, editor, contributor, or domain admin (700, 600, 500, 800 respectively)
         Cursor cur = cr.query(uri, EVENT_PROJECTION, "((" + Calendars.ACCOUNT_TYPE
