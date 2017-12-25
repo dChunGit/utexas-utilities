@@ -23,6 +23,7 @@
         android:id="@+id/calendar_account"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:paddingBottom="7dp"
         android:layout_gravity="left"
         tools:text="Calendar Account"
         android:textAppearance="@android:style/TextAppearance.Small"
