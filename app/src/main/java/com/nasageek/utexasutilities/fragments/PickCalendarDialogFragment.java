@@ -74,7 +74,7 @@ public class PickCalendarDialogFragment extends ExportScheduleDialogFragment {
         public CalendarInsertHandler(ContentResolver cr) {
             super(cr);
         }
-
+ 
         @Override
         public void onInsertComplete(int token, Object cookie, Uri uri) {
             if (token == getArguments().getParcelableArrayList("valuesList").size() - 1) {

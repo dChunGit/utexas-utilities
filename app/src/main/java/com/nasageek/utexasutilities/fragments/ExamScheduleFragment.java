@@ -194,9 +194,13 @@ public class ExamScheduleFragment extends ScheduleFragment implements ActionMode
                         //check to see if there is a makeup exam
                         if (splitExam[3].contains("\n")) {
                                 ArrayList<Date> parsedDates = parseDates(splitExam[3]);
-
-                                String building1 = splitExam[4].split("\n")[0].substring(2);
-                                String building2 = splitExam[4].split("\n")[1].substring(2);
+                                String building1 = "", building2 = "";
+                                try {
+                                    building1 = splitExam[4].split("\n")[0].substring(2);
+                                    building2 = splitExam[4].split("\n")[1].substring(2);
+                                } catch (Exception e) {
+                                    e.printStackTrace();
+                                }
 
                                 ContentValues contentValues1 = new ContentValues();
                                 ContentValues contentValues2 = new ContentValues();
@@ -222,7 +226,12 @@ public class ExamScheduleFragment extends ScheduleFragment implements ActionMode
                         } else {
                                 ArrayList<Date> parsedDates = parseDates(splitExam[3]);
 
-                                String building = splitExam[4].split("\n")[0];
+                                String building = "";
+                                try {
+                                    building = splitExam[4].split("\n")[0];
+                                } catch (Exception e) {
+                                    e.printStackTrace();
+                                }
 
                                 ContentValues contentValues1 = new ContentValues();
                                 contentValues1.put(CalendarContract.Events.TITLE, title);
@@ -237,7 +246,7 @@ public class ExamScheduleFragment extends ScheduleFragment implements ActionMode
 
                         }
 
-                    } catch (ParseException e) {
+                    } catch (Exception e) {
                         Toast.makeText(getActivity(),
                                 "Error parsing " + title
                                         + " time. Export canceled.",
