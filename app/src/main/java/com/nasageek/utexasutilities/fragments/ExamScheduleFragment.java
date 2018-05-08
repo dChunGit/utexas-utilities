@@ -266,8 +266,8 @@ public class ExamScheduleFragment extends ScheduleFragment implements ActionMode
             Uri uri = CalendarContract.Calendars.CONTENT_URI;
 
             //Check to make sure we have calendar permission before trying to access it
-            if (ActivityCompat.checkSelfPermission(getActivity(), Manifest.permission.READ_CALENDAR) != PackageManager.PERMISSION_GRANTED) {
-                requestPermissions(new String[]{Manifest.permission.READ_CALENDAR},
+            if (ActivityCompat.checkSelfPermission(getActivity(), Manifest.permission.WRITE_CALENDAR) != PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(new String[]{Manifest.permission.WRITE_CALENDAR},
                         REQUEST_CALENDAR_PERMISSION);
             }
 
@@ -411,10 +411,10 @@ public class ExamScheduleFragment extends ScheduleFragment implements ActionMode
         int id = item.getItemId();
         switch (id) {
             case R.id.export_exams: {
-                if (runtimePermissions.hasPermission(Manifest.permission.READ_CALENDAR)) {
+                if (runtimePermissions.hasPermission(Manifest.permission.WRITE_CALENDAR)) {
                     exportExams();
                 } else {
-                    requestPermissions(new String[]{Manifest.permission.READ_CALENDAR},
+                    requestPermissions(new String[]{Manifest.permission.WRITE_CALENDAR},
                             REQUEST_CALENDAR_PERMISSION);
                 }
             } break;

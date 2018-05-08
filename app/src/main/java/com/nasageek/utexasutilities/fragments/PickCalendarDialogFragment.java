@@ -1,16 +1,19 @@
 
 package com.nasageek.utexasutilities.fragments;
 
+import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Dialog;
 import android.content.AsyncQueryHandler;
 import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
+import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.CalendarContract;
 import android.support.annotation.NonNull;
+import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentActivity;
 import android.support.v7.app.AlertDialog;
 import android.util.Log;
@@ -78,6 +81,7 @@ public class PickCalendarDialogFragment extends ExportScheduleDialogFragment {
         @Override
         public void onInsertComplete(int token, Object cookie, Uri uri) {
             if (token == getArguments().getParcelableArrayList("valuesList").size() - 1) {
+
                 Log.d("CalendarStuff", "insert finished");
                 Toast.makeText(
                         parentAct,
