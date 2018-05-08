@@ -7,7 +7,7 @@ def buildTime = new Date().format("yyyy-MM-dd'T'HH:mm'Z'", TimeZone.getTimeZone(
 
 android {
     compileSdkVersion 27
-    buildToolsVersion '26.0.2'
+    buildToolsVersion '27.0.3'
 
     defaultConfig {
         applicationId "com.nasageek.utexasutilities"
@@ -71,15 +71,15 @@ dependencies {
     debugImplementation 'com.squareup.leakcanary:leakcanary-android:1.5.4'
     releaseImplementation 'com.squareup.leakcanary:leakcanary-android-no-op:1.5.4'
     implementation 'com.google.maps.android:android-maps-utils:0.4.4'
-    implementation 'com.android.support:support-v4:27.0.2'
-    implementation 'com.android.support:preference-v14:27.0.2'
-    implementation 'com.android.support:appcompat-v7:27.0.2'
-    implementation 'com.android.support:design:27.0.2'
+    implementation 'com.android.support:support-v4:27.1.1'
+    implementation 'com.android.support:preference-v14:27.1.1'
+    implementation 'com.android.support:appcompat-v7:27.1.1'
+    implementation 'com.android.support:design:27.1.1'
     implementation 'com.commonsware.cwac:pager:0.2.6'
-    implementation 'com.google.android.gms:play-services-analytics:11.8.0'
-    implementation 'com.google.android.gms:play-services-base:11.8.0'
-    implementation 'com.google.android.gms:play-services-maps:11.8.0'
-    implementation 'com.google.android.gms:play-services-location:11.8.0'
+    implementation 'com.google.android.gms:play-services-analytics:15.0.2'
+    implementation 'com.google.android.gms:play-services-base:15.0.1'
+    implementation 'com.google.android.gms:play-services-maps:15.0.1'
+    implementation 'com.google.android.gms:play-services-location:15.0.1'
     implementation 'com.madgag.spongycastle:core:1.58.0.0'
     implementation 'com.madgag.spongycastle:prov:1.58.0.0'
     implementation 'com.madgag.spongycastle:pkix:1.54.0.0'
@@ -108,7 +108,7 @@ buildscript {
         jcenter()
     }
     dependencies {
-        classpath 'com.google.gms:google-services:3.1.1'
+        classpath 'com.google.gms:google-services:3.3.0'
     }
 }
 
