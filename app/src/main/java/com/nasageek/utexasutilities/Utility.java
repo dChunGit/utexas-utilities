@@ -5,8 +5,6 @@ import android.content.Context;
 import android.widget.ImageView;
 import android.widget.Toast;
 
-import okhttp3.*;
-
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -16,6 +14,10 @@ import java.io.RandomAccessFile;
 import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
 
 public class Utility {
 

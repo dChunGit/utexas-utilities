@@ -28,12 +28,13 @@ import java.net.CookieManager;
 import java.net.HttpCookie;
 import java.net.URI;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import okhttp3.*;
+import okhttp3.FormBody;
+import okhttp3.Request;
+import okhttp3.RequestBody;
 
 //TODO: last transaction doesn't show when loading dialog is present at the bottom, low priority fix
 

@@ -27,14 +27,16 @@ import com.nasageek.utexasutilities.adapters.StickyHeaderAdapter;
 import com.nasageek.utexasutilities.model.LoadFailedEvent;
 import com.squareup.otto.Subscribe;
 
-import okhttp3.*;
-
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
 
 public class MenuFragment extends Fragment implements AdapterView.OnItemClickListener {
     private List<MyPair<String, List<Food>>> listOfLists = new ArrayList<>();

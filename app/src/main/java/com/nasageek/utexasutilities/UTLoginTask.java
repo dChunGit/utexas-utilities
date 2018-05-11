@@ -4,7 +4,9 @@ import com.nasageek.utexasutilities.model.LoadFailedEvent;
 
 import java.io.IOException;
 
-import okhttp3.*;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
 
 /**
  * Created by chris on 2/7/16.
