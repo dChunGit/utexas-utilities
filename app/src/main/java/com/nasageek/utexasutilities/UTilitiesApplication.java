@@ -15,7 +15,6 @@ import com.google.android.gms.analytics.GoogleAnalytics;
 import com.nasageek.utexasutilities.fragments.UTilitiesPreferenceFragment;
 import com.securepreferences.SecurePreferences;
 import com.squareup.leakcanary.LeakCanary;
-import com.squareup.okhttp.OkHttpClient;
 import com.tozny.crypto.android.AesCbcWithIntegrity;
 
 import org.acra.ACRA;
@@ -24,15 +23,21 @@ import org.acra.annotation.ReportsCrashes;
 
 import java.net.CookieHandler;
 import java.net.CookieManager;
+import java.net.CookiePolicy;
 import java.net.CookieStore;
 import java.security.GeneralSecurityException;
 import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
 import java.security.Security;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import javax.net.ssl.SSLContext;
+
+import okhttp3.*;
 
 @ReportsCrashes(
 customReportContent = {
@@ -53,7 +58,8 @@ public class UTilitiesApplication extends Application {
     public static final String UTD_AUTH_COOKIE_KEY = "utd_auth_cookie";
 
     private Map<String, AuthCookie> authCookies = new HashMap<>();
-    private OkHttpClient client = new OkHttpClient();
+    private OkHttpClient client;
+    private OkHttpClient.Builder builder = new OkHttpClient.Builder();
     private Map<String, AsyncTask> asyncTaskCache = new HashMap<>();
     private SharedPreferences securePreferences;
 
@@ -95,18 +101,20 @@ public class UTilitiesApplication extends Application {
             try {
                 SSLContext sc = SSLContext.getInstance("TLSv1.2");
                 sc.init(null, null, null);
-                client.setSslSocketFactory(new Tls12SocketFactory(sc.getSocketFactory()));
+                builder.socketFactory(new Tls12SocketFactory(sc.getSocketFactory()));
             } catch (NoSuchAlgorithmException | KeyManagementException e) {
                 e.printStackTrace();
             }
         }
 
-        authCookies.put(UTD_AUTH_COOKIE_KEY, new UtdAuthCookie(this));
-
         CookieManager cookieManager = new CookieManager();
         CookieHandler.setDefault(cookieManager);
-        client.setCookieHandler(cookieManager);
+        builder.connectTimeout(10, TimeUnit.SECONDS);
+        builder.cookieJar(new JavaNetCookieJar(cookieManager));
+        client = builder.build();
         CookieSyncManager.createInstance(this);
+
+        authCookies.put(UTD_AUTH_COOKIE_KEY, new UtdAuthCookie(this));
 
         initGoogleAnalytics();
         AnalyticsHandler.initTrackerIfNeeded(this);
@@ -174,6 +182,7 @@ public class UTilitiesApplication extends Application {
         for (AuthCookie authCookie : authCookies.values()) {
             authCookie.logout();
         }
+
         CookieStore cookies = ((CookieManager) CookieHandler.getDefault()).getCookieStore();
         cookies.removeAll();
     }

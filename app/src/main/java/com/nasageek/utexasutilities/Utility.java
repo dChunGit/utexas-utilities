@@ -5,9 +5,7 @@ import android.content.Context;
 import android.widget.ImageView;
 import android.widget.Toast;
 
-import com.squareup.okhttp.OkHttpClient;
-import com.squareup.okhttp.Request;
-import com.squareup.okhttp.Response;
+import okhttp3.*;
 
 import java.io.BufferedOutputStream;
 import java.io.File;

@@ -20,19 +20,20 @@ import com.nasageek.utexasutilities.Utility;
 import com.nasageek.utexasutilities.adapters.TransactionAdapter;
 import com.nasageek.utexasutilities.model.LoadFailedEvent;
 import com.nasageek.utexasutilities.model.Transaction;
-import com.squareup.okhttp.FormEncodingBuilder;
-import com.squareup.okhttp.Request;
-import com.squareup.okhttp.RequestBody;
 import com.squareup.otto.Subscribe;
 
 import java.io.IOException;
+import java.net.CookieHandler;
 import java.net.CookieManager;
 import java.net.HttpCookie;
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import okhttp3.*;
 
 //TODO: last transaction doesn't show when loading dialog is present at the bottom, low priority fix
 
@@ -124,7 +125,7 @@ public class TransactionsFragment extends DataLoadFragment {
     }
 
     private RequestBody buildInitialRequestBody() {
-        FormEncodingBuilder postdata = new FormEncodingBuilder();
+        FormBody.Builder postdata = new FormBody.Builder();
         if (TransactionType.Bevo.equals(mType)) {
             postdata.add("sRequestSw", "B");
         } else if (TransactionType.Dinein.equals(mType)) {
@@ -203,8 +204,8 @@ public class TransactionsFragment extends DataLoadFragment {
 
             HttpCookie screenSizeCookie = new HttpCookie("webBrowserSize", "B");
             screenSizeCookie.setDomain(".utexas.edu");
-            ((CookieManager) client.getCookieHandler()).getCookieStore()
-                   .add(URI.create(".utexas.edu"), screenSizeCookie);
+            ((CookieManager) CookieHandler.getDefault()).getCookieStore()
+                    .add(URI.create(".utexas.edu"), screenSizeCookie);
             Request request = new Request.Builder()
                     .post(form)
                     .url(reqUrl)
@@ -261,7 +262,7 @@ public class TransactionsFragment extends DataLoadFragment {
                 Matcher dateTimeMatcher = dateTimePattern.matcher(pagedata);
                 if (nameMatcher.find() && nextTransMatcher.find() && dateTimeMatcher.find()
                         && !this.isCancelled()) {
-                    FormEncodingBuilder postdata = new FormEncodingBuilder();
+                    FormBody.Builder postdata = new FormBody.Builder();
                     postdata.add("sNameFL", nameMatcher.group(1));
                     postdata.add("nexttransid", nextTransMatcher.group(1));
                     if (TransactionType.Bevo.equals(type)) {

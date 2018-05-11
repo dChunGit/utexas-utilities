@@ -7,12 +7,6 @@ import android.preference.PreferenceManager;
 import android.support.annotation.Nullable;
 import android.webkit.CookieSyncManager;
 
-import com.squareup.okhttp.FormEncodingBuilder;
-import com.squareup.okhttp.OkHttpClient;
-import com.squareup.okhttp.Request;
-import com.squareup.okhttp.RequestBody;
-import com.squareup.okhttp.Response;
-
 import java.io.IOException;
 import java.net.CookieHandler;
 import java.net.CookieManager;
@@ -21,8 +15,12 @@ import java.net.HttpCookie;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+
+import okhttp3.*;
 
 /**
  * Created by Chris on 7/4/2014.
@@ -53,7 +51,6 @@ public class AuthCookie {
             e.printStackTrace();
         }
         this.client = UTilitiesApplication.getInstance().getHttpClient();
-        this.client.setConnectTimeout(10, TimeUnit.SECONDS);
         this.settings = PreferenceManager.getDefaultSharedPreferences(mApp);
         this.mApp = mApp;
     }
@@ -178,7 +175,7 @@ public class AuthCookie {
         String pw = UTilitiesApplication.getInstance().getSecurePreferences()
                 .getString("password", "error");
 
-        RequestBody requestBody = new FormEncodingBuilder()
+        RequestBody requestBody = new FormBody.Builder()
                 .add(userNameKey, user)
                 .add(passwordKey, pw)
                 .build();

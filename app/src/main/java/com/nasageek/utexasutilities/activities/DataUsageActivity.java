@@ -31,10 +31,9 @@ import com.nasageek.utexasutilities.UTilitiesApplication;
 import com.nasageek.utexasutilities.fragments.DataLoadFragment.LoadStatus;
 import com.nasageek.utexasutilities.fragments.DataSourceSelectionFragment;
 import com.nasageek.utexasutilities.model.LoadFailedEvent;
-import com.squareup.okhttp.OkHttpClient;
-import com.squareup.okhttp.Request;
-import com.squareup.okhttp.Response;
 import com.squareup.otto.Subscribe;
+
+import okhttp3.*;
 
 import java.io.IOException;
 import java.text.DateFormat;

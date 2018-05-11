@@ -38,7 +38,6 @@ import com.nasageek.utexasutilities.adapters.ScheduleClassAdapter;
 import com.nasageek.utexasutilities.model.Classtime;
 import com.nasageek.utexasutilities.model.LoadFailedEvent;
 import com.nasageek.utexasutilities.model.UTClass;
-import com.squareup.okhttp.Request;
 import com.squareup.otto.Subscribe;
 
 import java.io.IOException;
@@ -46,6 +45,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import okhttp3.Request;
 
 @SuppressWarnings("deprecation")
 public class CourseScheduleFragment extends ScheduleFragment implements ActionModeFragment,
