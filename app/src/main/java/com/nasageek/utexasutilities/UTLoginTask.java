@@ -1,11 +1,10 @@
 package com.nasageek.utexasutilities;
 
 import com.nasageek.utexasutilities.model.LoadFailedEvent;
-import com.squareup.okhttp.OkHttpClient;
-import com.squareup.okhttp.Request;
-import com.squareup.okhttp.Response;
 
 import java.io.IOException;
+
+import okhttp3.*;
 
 /**
  * Created by chris on 2/7/16.

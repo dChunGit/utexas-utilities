@@ -41,7 +41,6 @@ import com.nasageek.utexasutilities.UTLoginTask;
 import com.nasageek.utexasutilities.UTilitiesApplication;
 import com.nasageek.utexasutilities.activities.CampusMapActivity;
 import com.nasageek.utexasutilities.model.LoadFailedEvent;
-import com.squareup.okhttp.Request;
 import com.squareup.otto.Subscribe;
 
 import java.io.IOException;
@@ -56,6 +55,8 @@ import java.util.Locale;
 import java.util.TimeZone;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import okhttp3.Request;
 
 import static com.nasageek.utexasutilities.UTilitiesApplication.UTD_AUTH_COOKIE_KEY;
 import static com.nasageek.utexasutilities.fragments.DoubleDatePickerDialogFragment.EVENT_PROJECTION;

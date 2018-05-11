@@ -12,6 +12,8 @@ import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.v4.view.MenuItemCompat;
 import android.support.v7.app.AlertDialog;
+import android.support.v7.widget.AppCompatImageButton;
+import android.support.v7.widget.AppCompatImageView;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
@@ -244,10 +246,10 @@ public class UTilitiesActivity extends BaseActivity {
         @Override
         public void onFocusChange(View v, boolean hasFocus) {
             if (hasFocus) {
-                ((TransitionDrawable) ((ImageButton) v).getDrawable())
+                ((TransitionDrawable) ((AppCompatImageView) v).getDrawable())
                         .startTransition(BUTTON_ANIMATION_DURATION);
             } else {
-                ((TransitionDrawable) ((ImageButton) v).getDrawable())
+                ((TransitionDrawable) ((AppCompatImageView) v).getDrawable())
                         .reverseTransition(BUTTON_ANIMATION_DURATION);
             }
 
