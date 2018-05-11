@@ -4,3 +4,6 @@
 
 # private test data
 /src/debug/assets/test_html/*/*_private.html
+
+#Other files
+/app/google-services.json
