@@ -33,8 +33,6 @@ import com.nasageek.utexasutilities.fragments.DataSourceSelectionFragment;
 import com.nasageek.utexasutilities.model.LoadFailedEvent;
 import com.squareup.otto.Subscribe;
 
-import okhttp3.*;
-
 import java.io.IOException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
@@ -44,6 +42,10 @@ import java.util.List;
 import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
 
 public class DataUsageActivity extends BaseActivity {
 

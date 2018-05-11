@@ -23,21 +23,19 @@ import org.acra.annotation.ReportsCrashes;
 
 import java.net.CookieHandler;
 import java.net.CookieManager;
-import java.net.CookiePolicy;
 import java.net.CookieStore;
 import java.security.GeneralSecurityException;
 import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
 import java.security.Security;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import javax.net.ssl.SSLContext;
 
-import okhttp3.*;
+import okhttp3.JavaNetCookieJar;
+import okhttp3.OkHttpClient;
 
 @ReportsCrashes(
 customReportContent = {
