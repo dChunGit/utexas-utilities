@@ -34,7 +34,6 @@ public class AuthCookie {
     protected String userNameKey;
     protected String passwordKey;
     protected boolean cookieHasBeenSet;
-    protected OkHttpClient client;
     protected SharedPreferences settings;
     protected URL url;
     protected Application mApp;
@@ -51,7 +50,6 @@ public class AuthCookie {
         } catch (MalformedURLException e) {
             e.printStackTrace();
         }
-        this.client = UTilitiesApplication.getInstance().getHttpClient();
         this.settings = PreferenceManager.getDefaultSharedPreferences(mApp);
         this.mApp = mApp;
     }
@@ -154,7 +152,7 @@ public class AuthCookie {
      * @throws IOException
      */
     protected boolean performLogin(Request request) throws IOException {
-        Response response = client.newCall(request).execute();
+        Response response = UTilitiesApplication.getInstance().getHttpClient().newCall(request).execute();
         if (!response.isSuccessful()) {
             throw new IOException("Bad response code: " + response + " during login.");
         }

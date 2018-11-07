@@ -11,6 +11,7 @@
 # generated files
 bin/
 gen/
+build/
 
 # other
 future_feature_list.txt
@@ -77,3 +78,7 @@ proguard/
 /incoming-distributions
 .idea
 *.sublime-*
+
+# Python
+*.pyc
+__pycache__/

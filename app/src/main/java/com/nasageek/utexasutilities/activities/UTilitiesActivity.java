@@ -10,10 +10,9 @@ import android.graphics.drawable.TransitionDrawable;
 import android.os.Build;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
+import android.support.v4.app.ActivityOptionsCompat;
 import android.support.v4.view.MenuItemCompat;
 import android.support.v7.app.AlertDialog;
-import android.support.v7.widget.AppCompatImageButton;
-import android.support.v7.widget.AppCompatImageView;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
@@ -21,11 +20,11 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.View.OnFocusChangeListener;
 import android.view.View.OnTouchListener;
-import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.Toast;
 
+import com.crashlytics.android.Crashlytics;
 import com.nasageek.utexasutilities.AnalyticsHandler;
 import com.nasageek.utexasutilities.AsyncTask;
 import com.nasageek.utexasutilities.AuthCookie;
@@ -36,8 +35,6 @@ import com.nasageek.utexasutilities.R;
 import com.nasageek.utexasutilities.UTilitiesApplication;
 import com.nasageek.utexasutilities.Utility;
 import com.squareup.otto.Subscribe;
-
-import org.acra.ACRA;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -64,7 +61,7 @@ public class UTilitiesActivity extends BaseActivity {
     private List<AsyncTask> loginTasks;
     private UpdateUiTask updateUiTask;
     private AuthCookie authCookie;
-    private boolean loggedIn;
+    private boolean loginFailed;
 
     private ImageView[] featureButtons;
     private View.OnClickListener enabledFeatureButtonListener;
@@ -90,18 +87,19 @@ public class UTilitiesActivity extends BaseActivity {
             }
         }
         if (savedInstanceState != null) {
-            loggedIn = savedInstanceState.getBoolean("loggedIn");
+            loginFailed = savedInstanceState.getBoolean("loginFailed");
         } else {
-            loggedIn = true;
+            loginFailed = false;
         }
 
         settings = PreferenceManager.getDefaultSharedPreferences(this.getBaseContext());
         setContentView(R.layout.main);
         enabledFeatureButtonListener = v -> {
             DashboardButtonData data = (DashboardButtonData) v.getTag();
+            Intent intent = null;
             // null cookie means the service doesn't need an EID
             if (data.authCookie == null) {
-                startActivity(data.intent);
+                intent = data.intent;
             } else {
                 if (settings.getBoolean(getString(R.string.pref_logintype_key), false)) {
                     // persistent login
@@ -109,7 +107,7 @@ public class UTilitiesActivity extends BaseActivity {
                             && isLoginRequired()) {
                         showLoginFirstToast();
                     } else {
-                        startActivity(data.intent);
+                        intent = data.intent;
                     }
                 } else {
                     // temp login
@@ -118,11 +116,16 @@ public class UTilitiesActivity extends BaseActivity {
                                 LoginActivity.class);
                         login.putExtra("activity", data.intent.getComponent()
                                 .getClassName());
-                        startActivity(login);
+                        intent = login;
                     } else {
-                        startActivity(data.intent);
+                        intent = data.intent;
                     }
                 }
+            }
+            if (intent != null) {
+                Bundle opts = ActivityOptionsCompat.makeScaleUpAnimation(v, 0, 0,
+                        v.getWidth(), v.getHeight()).toBundle();
+                startActivity(intent, opts);
             }
         };
         disabledFeatureButtonListener = v -> {
@@ -170,18 +173,18 @@ public class UTilitiesActivity extends BaseActivity {
         public AuthCookie authCookie;
         public ImageView checkOverlay;
         public ProgressBar loginProgress;
-        public boolean loggedIn;
+        public boolean enabled;
 
         // for authenticated services
         public DashboardButtonData(Intent intent, int id, AuthCookie authCookie,
                                    ImageView check, ProgressBar progress,
-                                   boolean loggedIn) {
+                                   boolean enabled) {
             this.intent = intent;
             this.imageButtonId = id;
             this.authCookie = authCookie;
             this.checkOverlay = check;
             this.loginProgress = progress;
-            this.loggedIn = loggedIn;
+            this.enabled = enabled;
         }
 
         // for unauthenticated services
@@ -214,11 +217,11 @@ public class UTilitiesActivity extends BaseActivity {
 
         DashboardButtonData buttonData[] = new DashboardButtonData[6];
         buttonData[0] = new DashboardButtonData(schedule, R.id.schedule_button, authCookie,
-                scheduleCheck, scheduleProgress, loggedIn);
+                scheduleCheck, scheduleProgress, !loginFailed);
         buttonData[1] = new DashboardButtonData(balance, R.id.balance_button, authCookie,
-                balanceCheck, balanceProgress, loggedIn);
+                balanceCheck, balanceProgress, !loginFailed);
         buttonData[2] = new DashboardButtonData(data, R.id.data_button, authCookie,
-                dataCheck, dataProgress, loggedIn);
+                dataCheck, dataProgress, !loginFailed);
         buttonData[3] = new DashboardButtonData(map, R.id.map_button);
         buttonData[4] = new DashboardButtonData(menu, R.id.menu_button);
 
@@ -229,7 +232,7 @@ public class UTilitiesActivity extends BaseActivity {
                     (TransitionDrawable) ib.getDrawable()));
             ib.setOnFocusChangeListener(new ImageButtonFocusListener());
             ib.setTag(buttonData[i]);
-            if (buttonData[i].loggedIn) {
+            if (buttonData[i].enabled) {
                 enableFeature(ib);
             } else {
                 disableFeature(ib);
@@ -246,10 +249,10 @@ public class UTilitiesActivity extends BaseActivity {
         @Override
         public void onFocusChange(View v, boolean hasFocus) {
             if (hasFocus) {
-                ((TransitionDrawable) ((AppCompatImageView) v).getDrawable())
+                ((TransitionDrawable) ((ImageView) v).getDrawable())
                         .startTransition(BUTTON_ANIMATION_DURATION);
             } else {
-                ((TransitionDrawable) ((AppCompatImageView) v).getDrawable())
+                ((TransitionDrawable) ((ImageView) v).getDrawable())
                         .reverseTransition(BUTTON_ANIMATION_DURATION);
             }
 
@@ -318,7 +321,7 @@ public class UTilitiesActivity extends BaseActivity {
         // update the displayed login state
         if (settings.getBoolean(getString(R.string.pref_logintype_key), false)) {
             if (!isLoggingIn()) {
-                if (loggedIn) {
+                if (authCookie.hasCookieBeenSet()) {
                     replaceLoginButton(menu, R.id.logout_button, "Log out");
                 } else {
                     replaceLoginButton(menu, R.id.login_button, "Log in");
@@ -327,7 +330,7 @@ public class UTilitiesActivity extends BaseActivity {
                 replaceLoginButton(menu, R.id.cancel_button, "Cancel");
             }
         } else {
-            if (loggedIn) {
+            if (authCookie.hasCookieBeenSet()) {
                 replaceLoginButton(menu, R.id.logout_button, "Log out");
             } else {
                 menu.removeGroup(R.id.login_menu_group);
@@ -358,16 +361,16 @@ public class UTilitiesActivity extends BaseActivity {
                 return true;
             case R.id.login_button:
                 login();
-                invalidateOptionsMenu();
+                supportInvalidateOptionsMenu();
                 return true;
             case R.id.logout_button:
                 AnalyticsHandler.trackLogoutEvent();
                 logout();
-                invalidateOptionsMenu();
+                supportInvalidateOptionsMenu();
                 return true;
             case R.id.cancel_button:
                 cancelLogin();
-                invalidateOptionsMenu();
+                supportInvalidateOptionsMenu();
                 return true;
             default:
                 return super.onOptionsItemSelected(item);
@@ -528,7 +531,7 @@ public class UTilitiesActivity extends BaseActivity {
              is called.
               */
             cancel(false);
-            mActivity.invalidateOptionsMenu();
+            mActivity.supportInvalidateOptionsMenu();
             mActivity.setLoginProgressBarVisiblity(false);
         }
 
@@ -547,9 +550,10 @@ public class UTilitiesActivity extends BaseActivity {
             // :( encryption broken in some way
             // Disable persistent login and let the user know something's up
             settings.edit().putBoolean(getString(R.string.pref_logintype_key), false).apply();
+            resetChecks();
             Toast.makeText(this, "Uh oh, password encryption is broken on your device! " +
                     "Persistent login has been temporarily disabled.", Toast.LENGTH_LONG).show();
-            ACRA.getErrorReporter().handleException(new Exception("Password decryption failure"));
+            Crashlytics.logException(new Exception("Password decryption failure"));
         }
         if (settings.getBoolean(getString(R.string.pref_logintype_key), false)) {
             if (!settings.contains("eid") || !sp.contains("password")
@@ -595,7 +599,7 @@ public class UTilitiesActivity extends BaseActivity {
                 ((DashboardButtonData) ib.getTag()).loginProgress.setVisibility(View.GONE);
             }
         }
-        loggedIn = false;
+        loginFailed = false;
         resetChecks();
     }
 
@@ -626,7 +630,7 @@ public class UTilitiesActivity extends BaseActivity {
             return;
         }
         boolean successful = lfe.loginSuccessful() || !isLoginRequired();
-        loggedIn = successful;
+        loginFailed = !successful;
         for (ImageView iv : featureButtons) {
             DashboardButtonData buttonData = (DashboardButtonData) iv.getTag();
             if (buttonData.authCookie != null) {
@@ -635,7 +639,7 @@ public class UTilitiesActivity extends BaseActivity {
                 } else {
                     disableFeature(iv);
                 }
-                buttonData.loggedIn = successful;
+                buttonData.enabled = successful;
                 buttonData.loginProgress.setVisibility(View.GONE);
             }
         }
@@ -654,7 +658,7 @@ public class UTilitiesActivity extends BaseActivity {
     @Override
     public void onResume() {
         super.onResume();
-        invalidateOptionsMenu();
+        supportInvalidateOptionsMenu();
         if (!settings.getBoolean(getString(R.string.pref_logintype_key), false)) {
             for (ImageView iv : featureButtons) {
                 enableFeature(iv);
@@ -676,7 +680,7 @@ public class UTilitiesActivity extends BaseActivity {
     @Override
     protected void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
-        outState.putBoolean("loggedIn", loggedIn);
+        outState.putBoolean("loginFailed", loginFailed);
     }
 
     @Override

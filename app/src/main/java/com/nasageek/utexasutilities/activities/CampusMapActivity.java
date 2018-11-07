@@ -10,6 +10,7 @@ import android.content.IntentSender;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.res.AssetManager;
+import android.database.Cursor;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.location.Location;
@@ -64,26 +65,35 @@ import com.google.maps.android.MarkerManager;
 import com.nasageek.utexasutilities.AnalyticsHandler;
 import com.nasageek.utexasutilities.AsyncTask;
 import com.nasageek.utexasutilities.BuildConfig;
-import com.nasageek.utexasutilities.BuildingSaxHandler;
+import com.nasageek.utexasutilities.BuildingProvider;
 import com.nasageek.utexasutilities.R;
 import com.nasageek.utexasutilities.ThemedArrayAdapter;
 import com.nasageek.utexasutilities.UTilitiesApplication;
 import com.nasageek.utexasutilities.model.Placemark;
+//<<<<<<< HEAD
+//=======
+//import com.squareup.okhttp.MediaType;
+//import com.squareup.okhttp.OkHttpClient;
+//import com.squareup.okhttp.Request;
+//import com.squareup.okhttp.RequestBody;
+//import com.squareup.okhttp.Response;
+//>>>>>>> 165b1c1e80dab75a67382a640eb98622801d8b1b
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.xml.sax.InputSource;
-import org.xml.sax.SAXException;
-import org.xml.sax.XMLReader;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.Date;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -92,12 +102,10 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
-import javax.xml.parsers.ParserConfigurationException;
-import javax.xml.parsers.SAXParser;
-import javax.xml.parsers.SAXParserFactory;
-
+import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
+import okhttp3.RequestBody;
 import okhttp3.Response;
 
 public class CampusMapActivity extends BaseActivity implements OnMapReadyCallback,
@@ -123,7 +131,7 @@ public class CampusMapActivity extends BaseActivity implements OnMapReadyCallbac
     private String routeid = null;
     private int routeIndex;
     private static final String STATE_ROUTE_INDEX = "route_index";
-    private Deque<Placemark> buildingDataSet;
+    private Collection<Placemark> buildingDataSet;
 
     private SharedPreferences settings;
 
@@ -139,6 +147,7 @@ public class CampusMapActivity extends BaseActivity implements OnMapReadyCallbac
 
     private MarkerManager.Collection shownBuildings;
     private MarkerManager.Collection shownStops;
+    private static final String STOP_TIME_PLACEHOLDER = "Loading...";
     private Map<String, Polyline> polylineMap;
     private GoogleMap mMap;
 
@@ -158,9 +167,10 @@ public class CampusMapActivity extends BaseActivity implements OnMapReadyCallbac
         Crossing_Place(670, "Crossing Place"),
         East_Campus(641, "East Campus"),
         Forty_Acres(640, "Forty Acres"),
+        Forty_Acres_East_Campus(682, "Forty Acres/East Campus"),
         Far_West(661, "Far West"),
         Intramural_Fields(656, "Intramural Fields"),
-        Intramural_Fields_Far_West(681, "Intramural Field/Far West"),
+        Intramural_Fields_Far_West(681, "Intramural Fields/Far West"),
         Lake_Austin(663, "Lake Austin"),
         Lakeshore(672, "Lakeshore"),
         North_Riverside(671, "North Riverside"),
@@ -212,7 +222,7 @@ public class CampusMapActivity extends BaseActivity implements OnMapReadyCallbac
         polylineMap = new HashMap<>();
 
         setupActionBar();
-        buildingDataSet = parseBuildings();
+        buildingDataSet = getBuildingData();
         ((SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map))
                 .getMapAsync(this);
     }
@@ -394,24 +404,23 @@ public class CampusMapActivity extends BaseActivity implements OnMapReadyCallbac
     }
 
     /**
-     * Parses building kml data into a Deque
+     * Get data about all buildings on campus
      *
-     * @return empty ArrayDeque if parse fails
+     * @return Collection of Placemarks
      */
-    private Deque<Placemark> parseBuildings() {
-        try {
-            SAXParserFactory factory = SAXParserFactory.newInstance();
-            SAXParser parser = factory.newSAXParser();
-            XMLReader xmlreader = parser.getXMLReader();
-            BuildingSaxHandler builSaxHandler = new BuildingSaxHandler();
-            xmlreader.setContentHandler(builSaxHandler);
-            InputSource is = new InputSource(assets.open("buildings.kml"));
-            xmlreader.parse(is);
-            return builSaxHandler.getParsedData();
-        } catch (ParserConfigurationException | SAXException | IOException e) {
-            e.printStackTrace();
+    private Collection<Placemark> getBuildingData() {
+        String[] projection = {"abbr", "name", "lng", "lat"};
+        Cursor cursor = getContentResolver().query(
+                BuildingProvider.CONTENT_URI, projection, null, null, null);
+        ArrayDeque<Placemark> buildings = new ArrayDeque<>(cursor.getCount());
+        while (cursor.moveToNext()) {
+            buildings.add(new Placemark(cursor.getString(cursor.getColumnIndex("abbr")),
+                                        cursor.getString(cursor.getColumnIndex("name")),
+                                        cursor.getDouble(cursor.getColumnIndex("lat")),
+                                        cursor.getDouble(cursor.getColumnIndex("lng"))));
         }
-        return new ArrayDeque<>();
+        cursor.close();
+        return buildings;
     }
 
     @Override
@@ -661,19 +670,31 @@ public class CampusMapActivity extends BaseActivity implements OnMapReadyCallbac
                 Double lat = Double.parseDouble(data[0].split(",")[0].trim());
                 Double lng = Double.parseDouble(data[0].split(",")[1].trim());
                 String title = data[1];
-                String description = data[2].trim();
+                int stopid = Integer.parseInt(data[2].trim());
 
-                shownStops.addMarker(new MarkerOptions()
+                Marker marker = shownStops.addMarker(new MarkerOptions()
                         .position(new LatLng(lat, lng))
                         .icon(BitmapDescriptorFactory.fromResource(R.drawable.ic_bus))
                         .title(title)
-                        .snippet(description));
+                        .snippet(STOP_TIME_PLACEHOLDER));
+                marker.setTag(new BusStop(stopid));
             }
 
         } catch (IOException e) {
             e.printStackTrace();
             Log.d("DirectionMap",
                     "Exception loading some file related to the kml or the stops files.");
+        }
+    }
+
+    class BusStop {
+        public int stopid;
+        public String times = "";
+        public CheckStopTask fetchTimesTask;
+        public boolean refreshing = false;
+
+        public BusStop(int stopid) {
+            this.stopid = stopid;
         }
     }
 
@@ -732,7 +753,6 @@ public class CampusMapActivity extends BaseActivity implements OnMapReadyCallbac
      */
     private boolean checkReady() {
         if (mMap == null) {
-            Toast.makeText(this, "Map is not ready yet", Toast.LENGTH_SHORT).show();
             return false;
         }
         return true;
@@ -842,7 +862,7 @@ public class CampusMapActivity extends BaseActivity implements OnMapReadyCallbac
         public View getInfoContents(Marker marker) {
             String title = marker.getTitle();
             String snippet = marker.getSnippet();
-            if (infoTitle.getText().equals("") || !(infoTitle.getText() + "").contains(title)) {
+            if (!infoTitle.getText().equals(title)) {
                 // Span for bolding the title
                 SpannableString styledTitle = new SpannableString(title);
                 styledTitle.setSpan(new StyleSpan(Typeface.BOLD), 0, title.length(), 0);
@@ -860,88 +880,154 @@ public class CampusMapActivity extends BaseActivity implements OnMapReadyCallbac
     class StopInfoWindowAdapter extends MyInfoWindowAdapter {
         @Override
         public View getInfoContents(Marker marker) {
-            if (marker.getSnippet().equals("Loading...")) {
-                // we've already shown the InfoWindow and set the snippet to "Loading..."
-                // this must just be a refresh of the InfoWindow
-                return infoLayout;
+            BusStop stopInfo = (BusStop) marker.getTag();
+            if (stopInfo.refreshing ||
+                    (stopInfo.fetchTimesTask != null &&
+                            stopInfo.fetchTimesTask.getStatus() == AsyncTask.Status.FINISHED &&
+                            !stopInfo.fetchTimesTask.failed)) {
+                View view = super.getInfoContents(marker);
+                infoSnippet.setText(stopInfo.times);
+                return view;
+            } else if (stopInfo.fetchTimesTask == null || stopInfo.fetchTimesTask.failed) {
+                int stopid = stopInfo.stopid;
+                stopInfo.fetchTimesTask = new CheckStopTask(infoSnippet);
+                stopInfo.fetchTimesTask.execute(stopid, marker);
             }
-            int stopid = Integer.parseInt(marker.getSnippet());
-            marker.setSnippet("Loading...");
-            View infoWindow = super.getInfoContents(marker);
-            new checkStopTask().execute(stopid, marker);
-            return infoWindow;
+            return super.getInfoContents(marker);
+        }
+    }
+
+    private class CheckStopTask extends AsyncTask<Object, Void, String> {
+        public static final String ERROR_NO_STOP_TIMES =
+                "There are no upcoming times\nfor this stop on capmetro.org";
+        public static final String ERROR_COULD_NOT_REACH_CAPMETRO =
+                "CapMetro.org could not be reached;\ntry checking your internet connection";
+        public static final String CAPMETRO_STOP_URL =
+                "http://capmetro.hafas.cloud/bin/mgate.exe";
+
+        Marker stopMarker;
+        TextView snippet;
+        boolean failed = false;
+
+        public CheckStopTask(TextView snippet) {
+            this.snippet = snippet;
         }
 
-        private class checkStopTask extends AsyncTask<Object, Void, String> {
-            public static final String ERROR_NO_STOP_TIMES =
-                    "There are no upcoming times\nfor this stop on capmetro.org";
-            public static final String ERROR_COULD_NOT_REACH_CAPMETRO =
-                    "CapMetro.org could not be reached;\ntry checking your internet connection";
-            public static final String CAPMETRO_STOP_URL =
-                    "http://www.capmetro.org/planner/s_nextbus2.asp?opt=2&route=%s&stopid=%d";
-
-            Marker stopMarker;
-
-            @Override
-            protected String doInBackground(Object... params) {
-                int stopid = (Integer) params[0];
-                stopMarker = (Marker) params[1];
-                String times = "";
-                OkHttpClient httpclient = UTilitiesApplication.getInstance(CampusMapActivity.this)
-                        .getHttpClient();
-                JSONObject data;
-                String reqUrl = String.format(CAPMETRO_STOP_URL, routeid, stopid);
-
-                try {
-                    Request get = new Request.Builder()
-                            .url(reqUrl)
-                            .build();
-                    Response response = httpclient.newCall(get).execute();
-                    if(!response.isSuccessful()) {
-                        throw new IOException("Bad response code " + response);
-                    }
-                    data = new JSONObject(response.body().string());
-                } catch (IOException | JSONException e) {
-                    times = ERROR_COULD_NOT_REACH_CAPMETRO;
-                    e.printStackTrace();
-                    return times;
-                }
-
-                try {
-                    if (!data.getString("status").equals("OK")) {
-                        times = ERROR_NO_STOP_TIMES;
-                        return times;
-                    } else {
-                        JSONArray buses = data.getJSONArray("list");
-                        if (buses.length() == 0) {
-                            times = ERROR_NO_STOP_TIMES;
-                            return times;
-                        }
-                        for (int i = 0; i < buses.length(); i++) {
-                            JSONObject bus = buses.getJSONObject(i);
-                            times += bus.getString("est") + "\n";
-                        }
-                        // trim off that trailing \n
-                        times = times.trim();
-
-                    }
-                } catch (JSONException je) {
-                    times = ERROR_COULD_NOT_REACH_CAPMETRO;
-                    return times;
-                }
-
-                return times;
+        @Override
+        protected String doInBackground(Object... params) {
+            String stopid = Integer.toString((Integer) params[0]);
+            stopMarker = (Marker) params[1];
+            String times = "";
+            OkHttpClient httpclient = UTilitiesApplication.getInstance(CampusMapActivity.this)
+                    .getHttpClient();
+            JSONObject post_data, data;
+            try {
+                post_data = new JSONObject(String.format("{" +
+                        "    'client': {}," +
+                        "    'formatted': false," +
+                        "    'lang': 'eng'," +
+                        "    'svcReqL': [" +
+                        "        {" +
+                        "            'id': '1|1'," +
+                        "            'meth': 'StationBoard'," +
+                        "            'req': {" +
+                        "                'jnyFltrL': [{" +
+                        "                    'mode': 'INC'," +
+                        "                    'type': 'PROD'," +
+                        "                    'value': 32" +
+                        "                }]," +
+                        "                'getPasslist': false," +
+                        "                'maxJny': 20," +
+                        "                'stbLoc': {'extId': '%s'}" +
+                        "            }" +
+                        "        }" +
+                        "    ]," +
+                        "    'ver': '1.13'" +
+                        "}", stopid));
+            } catch (JSONException e) {
+                failed = true;
+                throw new RuntimeException(e);
             }
 
-            @Override
-            protected void onPostExecute(String times) {
-                if ((infoSnippet.getText() + "").contains("Loading")) {
-                    // fix issue with InfoWindow "cycling" if the user taps
-                    // other markers while a marker's InfoWindow is loading data.
-                    if (stopMarker.isInfoWindowShown()) {
-                        infoSnippet.setText(times);
-                        stopMarker.showInfoWindow();
+            try {
+                RequestBody body = RequestBody.create(MediaType.parse("application/json; charset=utf-8"), post_data.toString());
+                Request get = new Request.Builder()
+                        .url(CAPMETRO_STOP_URL)
+                        .post(body)
+                        .build();
+                Response response = httpclient.newCall(get).execute();
+                if (!response.isSuccessful()) {
+                    throw new IOException("Bad response code " + response);
+                }
+                data = new JSONObject(response.body().string());
+            } catch (IOException | JSONException e) {
+                failed = true;
+                e.printStackTrace();
+                return ERROR_COULD_NOT_REACH_CAPMETRO;
+            }
+
+            try {
+                JSONObject svcRes = data.getJSONArray("svcResL").getJSONObject(0);
+                if (!svcRes.getString("err").equals("OK")) {
+                    failed = true;
+                    return ERROR_NO_STOP_TIMES;
+                } else {
+                    JSONArray products = svcRes.getJSONObject("res").getJSONObject("common").getJSONArray("prodL");
+                    JSONArray journies = svcRes.getJSONObject("res").optJSONArray("jnyL");
+                    int foundTimes = 0;
+                    for (int i = 0; i < (journies == null ? 0 : journies.length()); i++) {
+                        JSONObject journey = journies.getJSONObject(i);
+                        int productIdx = journey.getInt("prodX");
+                        JSONObject product = products.getJSONObject(productIdx);
+                        String journeyRoute = product.optString("number").equals(routeid)
+                                ? product.getString("number")
+                                : product.optString("nameS");
+                        if (!journeyRoute.equals(routeid)) {
+                            continue;
+                        }
+                        if (foundTimes++ >= 4) {
+                            break;
+                        }
+                        String arriveTime = journey.getJSONObject("stbStop").getString("dTimeS");
+                        // arriveTime sometimes contains 2 extra (seemingly unnecessary) leading 0s
+                        if (arriveTime.length() == 8) {
+                            arriveTime = arriveTime.substring(2);
+                        }
+                        SimpleDateFormat parser = new SimpleDateFormat("kkmmss");
+                        SimpleDateFormat formatter = new SimpleDateFormat("h:mm aa");
+                        try {
+                            Date date = parser.parse(arriveTime);
+                            times += formatter.format(date).toLowerCase() + '\n';
+                        } catch (ParseException e) {
+                            throw new RuntimeException(e);
+                        }
                     }
+                    if (foundTimes == 0) {
+                        failed = true;
+                        return ERROR_NO_STOP_TIMES;
+                    }
+                    // trim off that trailing \n
+                    times = times.trim();
+                }
+            } catch (JSONException je) {
+                failed = true;
+                return ERROR_COULD_NOT_REACH_CAPMETRO;
+            }
+            return times;
+        }
+
+        @Override
+        protected void onPostExecute(String times) {
+            BusStop stopInfo = (BusStop) stopMarker.getTag();
+            stopInfo.times = times;
+            if (snippet.getText().equals(STOP_TIME_PLACEHOLDER)) {
+                // fix issue with InfoWindow "cycling" if the user taps
+                // other markers while a marker's InfoWindow is loading data.
+                if (stopMarker.isInfoWindowShown()) {
+                    snippet.setText(times);
+                    stopInfo.refreshing = true;
+                    stopMarker.showInfoWindow();
+                    stopInfo.refreshing = false;
                 }
             }
         }
