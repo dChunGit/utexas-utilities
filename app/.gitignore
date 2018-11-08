@@ -5,12 +5,7 @@
 # private test data
 /src/debug/assets/test_html/*/*_private.html
 
-<<<<<<< HEAD
-#Other files
-/app/google-services.json
-=======
 # other private data (API keys and the such)
 /fabric.properties
 google-services.json
 private.xml
->>>>>>> 165b1c1e80dab75a67382a640eb98622801d8b1b
